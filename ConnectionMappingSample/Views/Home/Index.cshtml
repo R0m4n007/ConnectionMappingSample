@@ -1,0 +1,204 @@
+﻿@{
+    ViewBag.Title = "Chat, Chat, Chat...";
+}
+
+@section head {
+
+    <style type="text/css">
+        ul {
+            margin: 0;
+        }
+
+            ul li {
+                padding: 0;
+                list-style-type: none;
+            }
+
+        #messages {
+            margin-top: 10px;
+        }
+
+            #messages li {
+                background-color: #EEE;
+                -webkit-border-radius: 3px;
+                -moz-border-radius: 3px;
+                border-radius: 3px;
+                min-height: 40px;
+                line-height: 40px;
+                padding-left: 7px;
+                padding-right: 7px;
+                margin-bottom: 1px;
+            }
+
+        #users li {
+            border: 1px solid #EEE;
+            padding: 4px;
+            border-radius: 3px;
+            margin-bottom: 1px;
+            cursor: pointer;
+        }
+
+        .privateChatUser {
+            background-color: #3A87AD;
+        }
+        .app-container {
+            position: fixed;
+            left: 500px;
+            padding: 0;
+            margin: 0;
+        }
+        .open-button {
+            background-color: #555;
+            color: white;
+            float: right;
+            padding: 16px 20px;
+            border: none;
+            cursor: pointer;
+            opacity: 0.8;
+            position: fixed;
+            bottom: 23px;
+            right: 28px;
+            width: 280px;
+            display: block;
+        }
+        .open-chat {
+            float: left;
+            background-color: dimgrey;
+            color: black;
+            border: none;
+            cursor: pointer;
+            opacity: 0.8;
+            position: fixed;
+            left: 100px;
+            bottom: 23px;
+            width: 280px;
+            display: none;
+        }
+
+        .chat-container {
+            position: fixed;
+            left: 500px;
+            padding: 0;
+            margin: 0;
+            display: none;
+        }
+
+        .main-popup {
+            display: inline-block;
+            position: fixed;
+            bottom: 0;
+            right: 15px;
+            border: 3px solid #f1f1f1;
+            float: right;
+        }
+
+        .chat-popup {
+            display: none;
+            float: left;
+            position: fixed;
+            bottom: 0;
+            border: 3px solid #f1f1f1;
+        }
+
+        .form-container {
+            position: relative;
+            max-width: 400px;
+            max-height: 250px;
+            padding: 14px;
+            background-color: white;
+        }
+
+        .text {
+            position: static;
+            max-height: 180px;
+            overflow: auto;
+        }
+        .chat-header {
+            height: 20px;
+            background-color: ghostwhite;
+            color: black;
+        }
+    </style>
+}
+
+@section scripts {
+    <script src="~/Scripts/jquery.signalR-2.4.1.min.js"></script>
+    <script src="~/signalr/hubs"></script>
+    <script src="~/Scripts/apps/chat.js"></script>
+    <script>
+        function openForm(form) {
+            document.getElementById('open').style.display = "none"
+            document.getElementById(form).style.display = "block"
+        }
+        function minimize(form) {
+            document.getElementById(form).style.display = "none"
+        }
+        function closeForm(form) {
+            document.getElementById(form).style.display = "none"
+            document.getElementById('open').style.display = "block"
+        }
+        function closeChat(chat) {
+            document.getElementById(chat).style.display = "none"
+        }
+    </script>
+}
+
+<h2>Albor Chat</h2>
+
+<div class="alert alert-success">
+    Hello @User.Identity.Name! Start chating...
+</div>
+<div class="app-container" id="open">
+    <button type="button"  class="open-button" onclick="openForm('chat-container')">Chat</button>
+    <div data-bind="foreach: users" id="chat-open">
+        <button type="button" class="open-chat" onclick="openForm('chat')" data-bind="visible: isPrivateChatUser">
+            <span data-bind="text: name"></span>
+        </button>
+    </div>
+</div>
+<div class="chat-container" id="chat-container">
+    <div id="main" class="main-popup">
+        <div class="form-container">
+            <h4>Online: </h4>
+            <div id="users">
+                <ul data-bind="foreach: users">
+                    <li onclick="openForm('chat')" data-bind="click: setAsPrivateChat, css: { privateChatUser: isPrivateChatUser }">
+                        <span data-bind="text: name"></span>
+                    </li>
+                </ul>
+            </div>
+            <div class="text">
+                <ul id="messages" data-bind="foreach: messages">
+                    <li style="top:0" data-bind="visible: isPublic">
+                        <strong><span data-bind="text: from"></span>: </strong>
+                        <span data-bind="text: message"></span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <input type="text" placeholder="Send public message..." id="txtMsg" disabled="disabled" />
+        <button type="button" id="btnSend" class="btn btn-info" disabled="disabled">Send</button>
+        <button type="button" class="btn btn-warning" onclick="closeForm('chat-container')">Close</button>
+    </div>
+    <div id="chat" class="chat-popup">
+        <div class="form-container">
+            <div class="chat-header">
+                <center>
+                    <h5><span onclick="minimize('chat')" data-bind="text: privateChatUser"></span> </h5>
+                </center>
+            </div>
+            <div class="text">
+                <ul id="messages" data-bind="foreach: messages">
+                    <li style="top:0" data-bind="visible: $.trim(from()) == $.trim(viewModel.privateChatUser()) || ($.trim(from()) == $.trim('@User.Identity.Name') && $.trim(to()) == $.trim(viewModel.privateChatUser()))">
+                        <strong><span data-bind="text: from"></span>: </strong>
+                        <span data-bind="text: message"></span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <input type="text" placeholder="Send message..." id="txtMsgPrivate" />
+        <button type="button" id="btnSendPrivate" class="btn btn-info" disabled="disabled">Send</button>
+        <button type="button" class="btn btn-warning" data-bind="click: exitFromPrivateChat" onclick="closeChat('chat')">Close</button>
+    </div>
+</div>
